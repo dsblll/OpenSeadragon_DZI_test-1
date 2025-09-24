@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MinIO + OpenSeadragon Deep Zoom Demo</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- OpenSeadragon from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.0/build/openseadragon/openseadragon.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>MinIO + OpenSeadragon Deep Zoom Demo</h1>
+        
+        <div class="viewers-container">
+            <!-- Left viewer for Deep Zoom Image -->
+            <div class="viewer-section">
+                <h2>Image from MinIO with deep zoom</h2>
+                <div id="dzi-viewer" class="viewer"></div>
+                <div class="status" id="dzi-status">Loading DZI...</div>
+            </div>
+            
+            <!-- Right viewer for Regular Image -->
+            <div class="viewer-section">
+                <h2>Regular Image (full-res) from MinIO</h2>
+                <div id="regular-viewer" class="viewer"></div>
+                <div class="status" id="regular-status">Loading regular image...</div>
+            </div>
+        </div>
+        
+        <div class="info">
+            <p>Left viewer displays a Deep Zoom Image (DZI) processed with <strong>vips</strong> and served from MinIO.</p>
+            <p>Right viewer displays the original full-resolution image directly from MinIO.</p>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
