@@ -23,6 +23,9 @@ A Proof-of-Concept project demonstrating deep zoom images using **vips**, MinIO 
    - `sample1.jpg` (will be processed into DZI)
    - `sample2.jpg` (displayed as regular image)
 
+For example, this image can be downloaded, then pasted into the data/ directory twice and renamed to `sample1.jpg` and `sample2.jpg`:
+https://upload.wikimedia.org/wikipedia/commons/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg
+
 2. **Run the project**:
    ```bash
    docker-compose up --build
@@ -83,6 +86,93 @@ The project uses **libvips** to generate Deep Zoom Images:
 - **Layout**: Deep Zoom (Microsoft format)
 
 This creates a pyramid of progressively smaller images, allowing smooth zooming and panning of large images in the browser.
+
+## How OpenSeadragon Fetches DZI Tiles from MinIO
+
+When OpenSeadragon displays a Deep Zoom Image, it follows a sophisticated tile-fetching strategy:
+
+### **1. Initial Load Process**
+```javascript
+// OpenSeadragon first loads the DZI descriptor
+GET http://localhost:9000/images/sample1.dzi
+```
+
+The `.dzi` file contains metadata about the image:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Image xmlns="http://schemas.microsoft.com/deepzoom/2008"
+  Format="jpg" Overlap="1" TileSize="254">
+  <Size Height="3000" Width="4000"/>
+</Image>
+```
+
+### **2. Tile Pyramid Structure**
+Vips creates a pyramid of zoom levels in MinIO:
+```
+sample1_files/
+├── 0/           # Zoom level 0 (lowest resolution)
+│   └── 0_0.jpg
+├── 1/           # Zoom level 1
+│   └── 0_0.jpg
+├── ...
+├── 12/          # Higher zoom levels
+│   ├── 0_0.jpg  # Top-left tile
+│   ├── 0_1.jpg  # Top-center tile
+│   ├── 1_0.jpg  # Middle-left tile
+│   └── ...
+└── 13/          # Zoom level 13 (highest resolution)
+    ├── 0_0.jpg
+    ├── 0_1.jpg
+    └── ...
+```
+
+### **3. Smart Tile Loading**
+OpenSeadragon intelligently loads only visible tiles:
+
+**Initial View (Low Zoom):**
+```javascript
+// Loads low-resolution overview
+GET http://localhost:9000/images/sample1_files/8/0_0.jpg
+GET http://localhost:9000/images/sample1_files/8/0_1.jpg
+```
+
+**User Zooms In:**
+```javascript
+// Loads higher-resolution tiles for visible area
+GET http://localhost:9000/images/sample1_files/12/3_2.jpg
+GET http://localhost:9000/images/sample1_files/12/3_3.jpg
+GET http://localhost:9000/images/sample1_files/12/4_2.jpg
+GET http://localhost:9000/images/sample1_files/12/4_3.jpg
+```
+
+**User Pans Around:**
+```javascript
+// Loads adjacent tiles as needed
+GET http://localhost:9000/images/sample1_files/12/5_2.jpg
+GET http://localhost:9000/images/sample1_files/12/5_3.jpg
+```
+
+### **4. Performance Optimizations**
+
+- **On-Demand Loading**: Only requests tiles that are visible
+- **Progressive Enhancement**: Shows low-res tiles first, then high-res
+- **Caching**: Browser caches tiles for fast re-display
+- **Preloading**: Loads nearby tiles before user navigates to them
+- **Adaptive Quality**: Loads appropriate zoom level based on viewport
+
+### **5. Network Efficiency**
+```
+Regular Image Approach:
+└── Single Request: 4MB JPEG file
+
+Deep Zoom Approach:
+├── DZI Descriptor: ~200 bytes
+├── Initial tiles: ~50KB (4-8 tiles)
+├── Zoom tiles: ~100KB (as needed)
+└── Total: Only loads what's needed!
+```
+
+This tile-based approach means users can interact with massive images (even gigapixel images) with minimal initial loading time and smooth performance.
 
 ## Troubleshooting
 
