@@ -108,3 +108,165 @@ This creates a pyramid of progressively smaller images, allowing smooth zooming 
 ✅ **Vips for deep zoom preprocessing**  
 ✅ Side-by-side image comparison  
 ✅ Proper titles for both viewers
+
+---
+
+# 🏭 Production Deployment
+
+The current setup uses **public bucket access** for simplicity, but production environments require secure credential management. Here are the recommended approaches:
+
+## 🚨 Current Setup (Development Only)
+
+```javascript
+// Browser directly accesses MinIO - no credentials needed
+GET http://localhost:9000/images/sample1_files/12/0_0.jpg
+```
+
+- MinIO bucket set to **public read** (`mc anonymous set public`)
+- No authentication required
+- ⚠️ **NOT suitable for production**
+
+## 🔐 Production Security Solutions
+
+### **Option 1: Reverse Proxy (Recommended)**
+
+**How it works:**
+- Nginx proxy sits between browser and MinIO
+- Proxy handles authentication and adds MinIO credentials
+- Browser never sees MinIO credentials
+
+**Implementation:**
+
+1. **Update nginx configuration** (see `nginx-production.conf`):
+   ```nginx
+   location /api/images/ {
+       # Add authentication (JWT, session, etc.)
+       auth_request /auth;
+       
+       # Proxy to MinIO with credentials
+       rewrite ^/api/images/(.*)$ /images/$1 break;
+       proxy_pass http://minio:9000;
+       proxy_set_header Authorization "AWS4-HMAC-SHA256 ...";
+   }
+   ```
+
+2. **Update JavaScript**:
+   ```javascript
+   // Change from direct MinIO access
+   const MINIO_ENDPOINT = 'http://localhost:9000';
+   
+   // To API endpoint
+   const API_ENDPOINT = '/api/images';
+   tileSources: `${API_ENDPOINT}/sample1.dzi`
+   ```
+
+3. **Set MinIO to private**:
+   ```bash
+   mc anonymous set none myminio/images  # Remove public access
+   ```
+
+**Benefits:**
+- ✅ Browser never sees MinIO credentials
+- ✅ Centralized authentication/authorization
+- ✅ Can add rate limiting, caching, monitoring
+- ✅ Works with existing OpenSeadragon code
+
+### **Option 2: Presigned URLs**
+
+**How it works:**
+- Server generates temporary, signed URLs
+- URLs include authentication tokens
+- Browser uses presigned URLs (time-limited)
+
+**Implementation:**
+
+1. **Server-side URL generation**:
+   ```javascript
+   // Generate presigned URL (server-side)
+   const presignedUrl = await minioClient.presignedGetObject(
+       'images', 
+       'sample1_files/12/0_0.jpg', 
+       3600  // 1 hour expiry
+   );
+   
+   // Send to browser
+   res.json({ tileUrl: presignedUrl });
+   ```
+
+2. **Browser requests presigned URLs**:
+   ```javascript
+   // Browser gets presigned URL from your API
+   const response = await fetch('/api/get-tile-url?tile=sample1_files/12/0_0.jpg');
+   const { tileUrl } = await response.json();
+   
+   // Use the presigned URL
+   GET https://minio.example.com/images/sample1_files/12/0_0.jpg?X-Amz-Algorithm=...
+   ```
+
+**Benefits:**
+- ✅ Time-limited access (automatic expiry)
+- ✅ Granular permissions per tile
+- ✅ No persistent credentials in browser
+
+**Drawbacks:**
+- ❌ Requires server endpoint for each tile request
+- ❌ More complex implementation
+- ❌ Potential performance overhead
+
+### **Option 3: CDN with Private Origin**
+
+**How it works:**
+- CDN (CloudFront/CloudFlare) serves tiles publicly
+- CDN authenticates to MinIO privately
+- Browser accesses CDN (no MinIO credentials)
+
+**Implementation:**
+
+1. **CloudFront configuration**:
+   ```yaml
+   Origin:
+     DomainName: private-minio.internal
+     CustomOriginConfig:
+       HTTPPort: 9000
+       OriginRequestPolicyId: "custom-minio-auth"
+   ```
+
+2. **Browser requests**:
+   ```javascript
+   // Browser accesses CDN endpoint
+   tileSources: 'https://cdn.example.com/images/sample1.dzi'
+   
+   // CDN handles MinIO authentication internally
+   ```
+
+**Benefits:**
+- ✅ Global edge caching
+- ✅ High performance
+- ✅ Scalable worldwide
+- ✅ DDoS protection
+
+**Drawbacks:**
+- ❌ Additional CDN costs
+- ❌ More complex setup
+- ❌ Cache invalidation complexity
+
+## 🎯 Production Deployment Recommendation
+
+**For most applications**: Use **Option 1 (Reverse Proxy)**
+
+1. **Security**: Credentials stay server-side
+2. **Performance**: Direct streaming with optional caching
+3. **Simplicity**: Minimal code changes required
+4. **Flexibility**: Easy to add authentication, rate limiting, etc.
+
+## 📋 Production Checklist
+
+- [ ] Remove public bucket access: `mc anonymous set none`
+- [ ] Implement reverse proxy with authentication
+- [ ] Use environment variables for MinIO credentials
+- [ ] Add HTTPS/TLS certificates
+- [ ] Implement proper user authentication
+- [ ] Add rate limiting and monitoring
+- [ ] Set up proper backup strategy
+- [ ] Configure log aggregation
+- [ ] Test failover scenarios
