@@ -291,32 +291,108 @@ GET http://localhost:9090/images/sample1_files/12/0_0.jpg
 
 **Implementation:**
 
-1. **Update nginx configuration** (see `nginx-production.conf`):
+1. **Create nginx configuration** (`/etc/nginx/sites-available/openseadragon-app`):
    ```nginx
-   location /api/images/ {
-       # Add authentication (JWT, session, etc.)
-       auth_request /auth;
+   server {
+       listen 80;
+       server_name your-domain.com;
        
-       # Proxy to MinIO with credentials
-       rewrite ^/api/images/(.*)$ /images/$1 break;
-       proxy_pass http://minio:9090;
-       proxy_set_header Authorization "AWS4-HMAC-SHA256 ...";
+       # Serve the web application
+       location / {
+           root /var/www/openseadragon-app;
+           index index.html;
+           try_files $uri $uri/ =404;
+           
+           # CORS headers for the app
+           add_header Access-Control-Allow-Origin *;
+           add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+           add_header Access-Control-Allow-Headers "Authorization, Content-Type";
+       }
+       
+       # Proxy MinIO requests with authentication
+       location /api/images/ {
+           # Optional: Add your authentication here
+           # auth_request /auth;
+           # auth_request_set $user $upstream_http_x_user;
+           
+           # Remove /api from path before forwarding
+           rewrite ^/api/images/(.*)$ /images/$1 break;
+           
+           # Forward to MinIO with credentials injected
+           proxy_pass http://minio-server:9090;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           
+           # Add MinIO credentials (use environment variables)
+           proxy_set_header Authorization "AWS4-HMAC-SHA256 Credential=$MINIO_ACCESS_KEY/20231001/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-date, Signature=$MINIO_SIGNATURE";
+           
+           # CORS headers for image requests
+           add_header Access-Control-Allow-Origin *;
+           add_header Access-Control-Allow-Methods "GET, OPTIONS";
+           add_header Access-Control-Allow-Headers "Authorization, Content-Type";
+           
+           # Handle preflight requests
+           if ($request_method = 'OPTIONS') {
+               return 204;
+           }
+       }
+       
+       # Optional: Authentication endpoint
+       location = /auth {
+           internal;
+           proxy_pass http://auth-service/verify;
+           proxy_pass_request_body off;
+           proxy_set_header Content-Length "";
+           proxy_set_header X-Original-URI $request_uri;
+       }
    }
    ```
 
-2. **Update JavaScript**:
+2. **Update JavaScript to use API endpoint**:
    ```javascript
    // Change from direct MinIO access
    const MINIO_ENDPOINT = 'http://localhost:9090';
    
-   // To API endpoint
+   // To proxied API endpoint
    const API_ENDPOINT = '/api/images';
    tileSources: `${API_ENDPOINT}/sample1.dzi`
    ```
 
-3. **Set MinIO to private**:
+3. **Environment variables for nginx** (in `/etc/nginx/conf.d/env.conf`):
+   ```nginx
+   # Load MinIO credentials from environment
+   env MINIO_ACCESS_KEY;
+   env MINIO_SECRET_KEY;
+   
+   # You'll need to use lua or a more advanced setup for dynamic AWS signature generation
+   # Alternative: Use a simple proxy_pass with basic auth or API key
+   ```
+
+4. **Simplified approach without AWS signatures**:
+   ```nginx
+   # In your nginx config, use a simpler approach:
+   location /api/images/ {
+       # Set MinIO bucket to private access
+       # Use nginx auth_basic or auth_request for user authentication
+       auth_basic "Restricted Access";
+       auth_basic_user_file /etc/nginx/.htpasswd;
+       
+       # Forward to MinIO (bucket should be private)
+       rewrite ^/api/images/(.*)$ /images/$1 break;
+       proxy_pass http://minio-server:9090;
+       proxy_set_header Authorization "Basic $MINIO_BASIC_AUTH_TOKEN";
+   }
+   ```
+
+5. **Set MinIO bucket to private access**:
    ```bash
-   mc anonymous set none myminio/images  # Remove public access
+   # Remove public access
+   mc anonymous set none myminio/images
+   
+   # Create service account for nginx
+   mc admin user svcacct add myminio minioadmin --access-key "nginx-proxy" --secret-key "your-secret-key"
    ```
 
 **Benefits:**
