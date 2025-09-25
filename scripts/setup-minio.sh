@@ -5,7 +5,7 @@ echo "Waiting for MinIO to be ready..."
 sleep 10
 
 # Configure MinIO client
-mc alias set myminio http://minio:9000 minioadmin minioadmin123
+mc alias set myminio http://minio:9090 minioadmin minioadmin123
 
 # Create bucket
 echo "Creating bucket 'images'..."

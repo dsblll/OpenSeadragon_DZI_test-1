@@ -30,10 +30,15 @@ https://upload.wikimedia.org/wikipedia/commons/e/ec/Mona_Lisa%2C_by_Leonardo_da_
    ```bash
    docker-compose up --build
    ```
+Or, if only the web app needs to be updated:
+   ```bash
+   docker-compose up -d --build webapp
+   ```
 
 3. **Access the application**:
    - Web App: http://localhost:8080
    - MinIO Console: http://localhost:9001 (admin/minioadmin123)
+   - MinIO API: http://localhost:9090
 
 ## How it Works
 
@@ -49,7 +54,7 @@ https://upload.wikimedia.org/wikipedia/commons/e/ec/Mona_Lisa%2C_by_Leonardo_da_
 
 ### Services
 
-- **minio**: Storage service (ports 9000, 9001)
+- **minio**: Storage service (ports 9090, 9001)
 - **minio-init**: Initializes bucket and uploads sample images
 - **image-processor**: Uses vips to create DZI tiles
 - **webapp**: Nginx serving the OpenSeadragon application (port 8080)
@@ -94,7 +99,7 @@ When OpenSeadragon displays a Deep Zoom Image, it follows a sophisticated tile-f
 ### **1. Initial Load Process**
 ```javascript
 // OpenSeadragon first loads the DZI descriptor
-GET http://localhost:9000/images/sample1.dzi
+GET http://localhost:9090/images/sample1.dzi
 ```
 
 The `.dzi` file contains metadata about the image:
@@ -132,24 +137,24 @@ OpenSeadragon intelligently loads only visible tiles:
 **Initial View (Low Zoom):**
 ```javascript
 // Loads low-resolution overview
-GET http://localhost:9000/images/sample1_files/8/0_0.jpg
-GET http://localhost:9000/images/sample1_files/8/0_1.jpg
+GET http://localhost:9090/images/sample1_files/8/0_0.jpg
+GET http://localhost:9090/images/sample1_files/8/0_1.jpg
 ```
 
 **User Zooms In:**
 ```javascript
 // Loads higher-resolution tiles for visible area
-GET http://localhost:9000/images/sample1_files/12/3_2.jpg
-GET http://localhost:9000/images/sample1_files/12/3_3.jpg
-GET http://localhost:9000/images/sample1_files/12/4_2.jpg
-GET http://localhost:9000/images/sample1_files/12/4_3.jpg
+GET http://localhost:9090/images/sample1_files/12/3_2.jpg
+GET http://localhost:9090/images/sample1_files/12/3_3.jpg
+GET http://localhost:9090/images/sample1_files/12/4_2.jpg
+GET http://localhost:9090/images/sample1_files/12/4_3.jpg
 ```
 
 **User Pans Around:**
 ```javascript
 // Loads adjacent tiles as needed
-GET http://localhost:9000/images/sample1_files/12/5_2.jpg
-GET http://localhost:9000/images/sample1_files/12/5_3.jpg
+GET http://localhost:9090/images/sample1_files/12/5_2.jpg
+GET http://localhost:9090/images/sample1_files/12/5_3.jpg
 ```
 
 ### **4. Performance Optimizations**
@@ -238,7 +243,7 @@ This makes overlays perfect for Deep Zoom Images where users can zoom from overv
 **DZI not loading?**
 - Check if `sample1.jpg` exists in `data/` directory
 - Wait for image processing to complete (check logs: `docker-compose logs image-processor`)
-- Verify DZI files were uploaded to MinIO
+- Verify DZI files were uploaded to MinIO at http://localhost:9090
 
 **Regular image not loading?**
 - Ensure `sample2.jpg` exists in `data/` directory
@@ -268,7 +273,7 @@ The current setup uses **public bucket access** for simplicity, but production e
 
 ```javascript
 // Browser directly accesses MinIO - no credentials needed
-GET http://localhost:9000/images/sample1_files/12/0_0.jpg
+GET http://localhost:9090/images/sample1_files/12/0_0.jpg
 ```
 
 - MinIO bucket set to **public read** (`mc anonymous set public`)
@@ -294,7 +299,7 @@ GET http://localhost:9000/images/sample1_files/12/0_0.jpg
        
        # Proxy to MinIO with credentials
        rewrite ^/api/images/(.*)$ /images/$1 break;
-       proxy_pass http://minio:9000;
+       proxy_pass http://minio:9090;
        proxy_set_header Authorization "AWS4-HMAC-SHA256 ...";
    }
    ```
@@ -302,7 +307,7 @@ GET http://localhost:9000/images/sample1_files/12/0_0.jpg
 2. **Update JavaScript**:
    ```javascript
    // Change from direct MinIO access
-   const MINIO_ENDPOINT = 'http://localhost:9000';
+   const MINIO_ENDPOINT = 'http://localhost:9090';
    
    // To API endpoint
    const API_ENDPOINT = '/api/images';
@@ -376,7 +381,7 @@ GET http://localhost:9000/images/sample1_files/12/0_0.jpg
    Origin:
      DomainName: private-minio.internal
      CustomOriginConfig:
-       HTTPPort: 9000
+       HTTPPort: 9090
        OriginRequestPolicyId: "custom-minio-auth"
    ```
 

@@ -1,5 +1,5 @@
 // MinIO endpoint configuration
-const MINIO_ENDPOINT = 'http://localhost:9000';
+const MINIO_ENDPOINT = 'http://localhost:9090';
 const BUCKET_NAME = 'images';
 
 // Global viewers for overlay creation
