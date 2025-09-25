@@ -1,25 +1,22 @@
-FROM ubuntu:22.04
+FROM python:3.11-slim
 
-# Install vips and dependencies
 RUN apt-get update && apt-get install -y \
-    libvips-tools \
-    libvips-dev \
     curl \
-    python3 \
-    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+# Install only PIL and MinIO client (no external image libraries)
+RUN pip install Pillow minio
 
 # Install MinIO client
 RUN curl -O https://dl.min.io/client/mc/release/linux-amd64/mc && \
     chmod +x mc && \
     mv mc /usr/local/bin/
 
-# Copy processing script
-COPY process-images.sh /process-images.sh
-RUN chmod +x /process-images.sh
+# Copy Python scripts
+COPY dzi_creator.py /dzi_creator.py
+COPY process_images.py /process_images.py
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Set working directory
 WORKDIR /app
-
-# Run the processing script
-CMD ["/process-images.sh"]
+ENTRYPOINT ["/entrypoint.sh"]

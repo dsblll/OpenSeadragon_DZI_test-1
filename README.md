@@ -5,17 +5,18 @@ A Proof-of-Concept project demonstrating deep zoom images using **vips**, MinIO 
 ## Architecture
 
 - **MinIO**: S3-compatible storage for images and DZI tiles
-- **Vips Image Processor**: Converts images to Deep Zoom format
+- **PIL Image Processor**: Converts images to Deep Zoom format using pure Python
 - **Web App**: Vanilla JavaScript application with OpenSeadragon
 - **Docker Compose**: Orchestrates all services
 
 ## Key Features
 
-✅ **Vips integration** for high-quality deep zoom preprocessing  
+✅ **Pure PIL integration** for commercial-friendly deep zoom preprocessing  
 ✅ **MinIO storage** with CORS configured for browser access  
 ✅ **Side-by-side comparison** of DZI vs regular image display  
 ✅ **No npm dependencies** - uses CDN for OpenSeadragon  
 ✅ **Vanilla JavaScript** - no frameworks required  
+✅ **Commercial license** - MIT/PIL licenses safe for commercial use  
 
 ## Quick Start
 
@@ -45,9 +46,11 @@ Or, if only the web app needs to be updated:
 ### Image Processing Flow
 1. **MinIO starts** and creates the 'images' bucket
 2. **Sample images uploaded** to MinIO
-3. **Vips processes** `sample1.jpg` into Deep Zoom format:
-   ```bash
-   vips dzsave sample1.jpg sample1 --layout dz --suffix .jpg --overlap 1 --tile-size 254
+3. **PIL processes** `sample1.jpg` into Deep Zoom format:
+   ```python
+   # Pure Python PIL Deep Zoom creation
+   creator = PILDeepZoomCreator(tile_size=254, tile_overlap=1)
+   creator.create_dzi('sample1.jpg', 'sample1.dzi')
    ```
 4. **DZI files uploaded** back to MinIO (`.dzi` descriptor + tile pyramid)
 5. **Web app loads** both DZI and regular images via OpenSeadragon
@@ -56,7 +59,7 @@ Or, if only the web app needs to be updated:
 
 - **minio**: Storage service (ports 9090, 9001)
 - **minio-init**: Initializes bucket and uploads sample images
-- **image-processor**: Uses vips to create DZI tiles
+- **image-processor**: Uses pure PIL to create DZI tiles
 - **webapp**: Nginx serving the OpenSeadragon application (port 8080)
 
 ## Project Structure
@@ -70,8 +73,10 @@ Or, if only the web app needs to be updated:
 ├── scripts/
 │   └── setup-minio.sh         # MinIO initialization
 ├── image-processor/
-│   ├── Dockerfile             # Vips + MinIO client
-│   └── process-images.sh      # DZI processing script
+│   ├── Dockerfile             # PIL + MinIO client
+│   ├── dzi_creator.py         # Pure PIL Deep Zoom generator
+│   ├── process_images.py      # DZI processing script
+│   └── entrypoint.sh          # Container entrypoint
 ├── webapp/
 │   ├── index.html             # Main HTML page
 │   ├── script.js              # OpenSeadragon logic
@@ -81,16 +86,17 @@ Or, if only the web app needs to be updated:
 └── processed/                  # Temporary processing directory
 ```
 
-## Vips Deep Zoom Processing
+## PIL Deep Zoom Processing
 
-The project uses **libvips** to generate Deep Zoom Images:
+The project uses **pure Python PIL (Pillow)** to generate Deep Zoom Images:
 
 - **Tile size**: 254x254 pixels
 - **Format**: JPEG tiles
 - **Overlap**: 1 pixel between adjacent tiles
 - **Layout**: Deep Zoom (Microsoft format)
+- **License**: PIL Software License (commercial-friendly)
 
-This creates a pyramid of progressively smaller images, allowing smooth zooming and panning of large images in the browser.
+This creates a pyramid of progressively smaller images, allowing smooth zooming and panning of large images in the browser without any external dependencies or licensing concerns.
 
 ## How OpenSeadragon Fetches DZI Tiles from MinIO
 
@@ -112,7 +118,7 @@ The `.dzi` file contains metadata about the image:
 ```
 
 ### **2. Tile Pyramid Structure**
-Vips creates a pyramid of zoom levels in MinIO:
+PIL creates a pyramid of zoom levels in MinIO:
 ```
 sample1_files/
 ├── 0/           # Zoom level 0 (lowest resolution)
@@ -259,9 +265,10 @@ This makes overlays perfect for Deep Zoom Images where users can zoom from overv
 ✅ MinIO for image storage  
 ✅ Vanilla JavaScript (no npm)  
 ✅ OpenSeadragon from CDN  
-✅ **Vips for deep zoom preprocessing**  
+✅ **Pure PIL for deep zoom preprocessing**  
 ✅ Side-by-side image comparison  
-✅ Proper titles for both viewers
+✅ Proper titles for both viewers  
+✅ **Commercial-friendly licensing**
 
 ---
 
