@@ -12,3 +12,8 @@ I would like to build a Proof-of-Concpet project that fullfills the following re
     * no UI framework that requires npm shall be used (no npm install is allowed)
     * the app shall be written in vanilla javasript (no React / Angular / Vue.js, etc.)
     * before any code is generated, please first outline the feasibility and explain about the advised architecture
+4. on both left and right images
+    * two polygon overlays are placed (overlay 1: A little left of the images' center. Overlay 2: A little right of the images' center)
+    * by means of a click on a button "Show/Hide Overlay 1" overlay 1 is shown (if hidden before) or hidden (if shown before)
+    * by means of a click on a button "Show/Hide Overlay 2" overlay 2 is shown (if hidden before) or hidden (if shown before)
+    * canvas overlays are used for performance reasons (no SVG or OpenSeadragon's built-in overlay system)

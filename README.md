@@ -174,6 +174,65 @@ Deep Zoom Approach:
 
 This tile-based approach means users can interact with massive images (even gigapixel images) with minimal initial loading time and smooth performance.
 
+## Polygon Overlays with OpenSeadragon
+
+OpenSeadragon provides excellent support for polygon overlays, including on Deep Zoom Images. This enables advanced features like annotations, region highlighting, and interactive elements.
+
+### **Overlay Implementation Approaches**
+
+#### **1. SVG Overlays**
+- **Best for**: Simple polygons with few points (<500)
+- **Pros**: Easy styling with CSS, scalable graphics
+- **Cons**: Performance degrades with thousands of points
+
+```javascript
+const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+polygon.setAttribute("points", "100,100 200,50 300,100 250,200");
+polygon.setAttribute("fill", "rgba(255,0,0,0.3)");
+```
+
+#### **2. Canvas Overlays (Recommended)**
+- **Best for**: Complex polygons with thousands of points
+- **Pros**: High performance, memory efficient, handles complex shapes
+- **Cons**: Less styling flexibility than SVG
+
+```javascript
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+ctx.beginPath();
+for(let i = 0; i < points.length; i++) {
+    i === 0 ? ctx.moveTo(points[i].x, points[i].y) : ctx.lineTo(points[i].x, points[i].y);
+}
+ctx.closePath();
+ctx.fillStyle = 'rgba(255,0,0,0.3)';
+ctx.fill();
+```
+
+### **Performance Considerations**
+
+- **Canvas is superior** for polygons with >500 points
+- **SVG creates DOM elements** for each point (performance bottleneck)
+- **Canvas renders in single operation** (much faster)
+- **OpenSeadragon coordinates** automatically scale with zoom levels
+
+### **Deep Zoom Compatibility**
+
+✅ **Overlays scale automatically** with image zoom  
+✅ **Coordinates use image space**, not screen pixels  
+✅ **Works with tile-based loading** seamlessly  
+✅ **Interactive capabilities** (click detection, hover effects)  
+✅ **Show/hide functionality** built-in  
+
+### **Overlay Coordinate System**
+
+OpenSeadragon uses normalized image coordinates (0.0 to 1.0):
+- `(0, 0)` = Top-left corner of image
+- `(1, 1)` = Bottom-right corner of image
+- Overlays automatically scale with zoom and pan operations
+
+This makes overlays perfect for Deep Zoom Images where users can zoom from overview to pixel-level detail.
+
 ## Troubleshooting
 
 **DZI not loading?**
